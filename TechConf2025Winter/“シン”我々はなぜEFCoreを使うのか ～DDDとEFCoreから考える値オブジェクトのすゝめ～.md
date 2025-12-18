@@ -2,7 +2,8 @@
 marp: true
 ---
 
-# “シン”我々はなぜEFCoreを使うのか ～DDDとEFCoreから考える値オブジェクトのすゝめ～
+# “シン”我々はなぜEFCoreを使うのか 
+～DDDとEFCoreから考える値オブジェクトのすゝめ～
 
 ---
 
@@ -56,6 +57,8 @@ marp: true
 今日はそんな未来を回避するために、
 エンジニアによるエンジニアのための戦略・戦術をお伝えします。
 
+--- 
+
 ## なぜ面倒な仕事が生まれたか
 
 - 私の経験上、長期的に事業的に成功しているシステムのコード≒レガシーコードの現場では、
@@ -72,6 +75,8 @@ marp: true
         →変更箇所の漏れが多発し、力業でマネジメントするしかなくなる
         - 業務の本質を理解せず、場当たり的な実装を行ったためにロジックがカオス化する
         →変更の副作用を担保するために、すべての流れをトレースする必要がある
+
+--- 
 
 ## どのように面倒な仕事を回避できそうか
 
@@ -98,6 +103,8 @@ if (diff > 120) throw new Exception("NG");
 var time = TransportTime.From(shippedAt, placedAt); // 120分超ならここで失敗（仕様が型にある）
 
 ```
+
+--- 
 
 ### 課題②：業務ロジックが凝集せず、あちこちに散らばっている
 →変更箇所の漏れが多発し、力業でマネジメントするしかなくなる
@@ -132,6 +139,8 @@ status = (placedAt - shippedAt).TotalMinutes <= 120 ? "OK" : "NG";
 // どのAPIでもBatchでも、TransportTime型を利用する時点でチェックが適用される
 var time = TransportTime.From(shippedAt, placedAt);
 ```
+
+---
 
 ### 課題③：業務の本質を理解せず、場当たり的な実装を行ったためにロジックがカオス化する
 →変更の副作用を担保するために、すべての流れをトレースする必要がある
@@ -186,6 +195,8 @@ modelBuilder.Entity<ConcreteDelivery>()
         ct.Property(p => p.Minutes).HasColumnName("TransportMinutes"));
 ```
 
+---
+
 ## つまり・・・？
 
 将来の自分のためにちゃんと自己文書化されたコードになるように設計しよう
@@ -193,6 +204,8 @@ modelBuilder.Entity<ConcreteDelivery>()
 というモチベーションが湧いてきます（動けばいいわけではない）
 
 　湧いてきましたよね？その体で進めていきます。
+
+---
 
 # 本質的複雑性に向き合う
 
@@ -220,6 +233,8 @@ modelBuilder.Entity<ConcreteDelivery>()
     - あなたは受け取った情報に対して、どのようなルールを実現するか＝業務ロジック**だけ**に集中できます
 - このような考えこそ、ドメイン駆動設計の戦略の始まりです
 
+---
+
 # ドメイン駆動設計の戦略
 
 - 業務ロジックの複雑さ、競合他社との差別化　の2軸のマトリクスで区分分けする
@@ -227,6 +242,9 @@ modelBuilder.Entity<ConcreteDelivery>()
     - 補完的な業務領域
     - 一般または補完的な業務領域
     - 中核の業務領域
+
+
+---
 
 ### クイズ
 
@@ -249,6 +267,9 @@ modelBuilder.Entity<ConcreteDelivery>()
     - 商品マスタの登録機能　→　若手の新人
     - 顧客の趣向に合わせた商品のレコメンド機能　→　エースエンジニア
     - 決済機能　→　外部ライブラリ
+
+
+---
 
 # アーキテクチャの位置付け
 
@@ -273,6 +294,8 @@ modelBuilder.Entity<ConcreteDelivery>()
     - 補完的業務領域が、中核的業務領域に成長することもある
 - ドメインモデルはコストが高いため、中核的な業務領域で複雑さに向き合うときにのみ利用する
 
+---
+
 # ドメイン駆動開発の戦術
 
 - では複雑で独自性の高い分野はどのように実装すべきか→ドメインモデル
@@ -280,9 +303,12 @@ modelBuilder.Entity<ConcreteDelivery>()
 - さらに理解が浅いまま単に真似するだけでは、むしろ複雑性を持ち込むだけに終わりそう
 - まずは、いつでも使える値オブジェクトから始めよう
 
+---
+
 ## 値オブジェクト
 
-- 例を概説する(アンチパターンと比較する)
+- あるエンティティ内のプロパティを、不変のモデリングされた値として表現すること
+- お金をintで扱わずに、int Money型
 
 ### BAD①：業務（ドメイン）上の意味が読み取れないロジック
 
@@ -318,6 +344,8 @@ status = (placedAt - shippedAt).TotalMinutes <= LimitMinutes? "OK" : "NG";
 
 - こうなるとドキュメントで業務知識を補完するしかなくなる。
 
+---
+
 ### GOOD：コードから業務知識が読み取れる
 
 ```csharp
@@ -352,6 +380,9 @@ public sealed class TransportTime
     - 密結合→不正解
 - 値オブジェクトを利用することで凝集度を高くすることができる
     - チェックロジックがあちこちに散らばっている状態を低凝集という
+
+---
+
 - ？：staticな値Helper（値Util）クラスじゃダメなの？
     - ①メソッド化しても、呼びだされなければ意味が無いので、リスクは残る
     - ②そのロジックが複雑に絡み合い、どんどん複雑化する可能性
@@ -391,6 +422,8 @@ public static class DeliveryRules
 
 - しかも、同じクラスに置かれていることで、switchでの分岐やif elseの増加につながる
     - ここまでくると密結合
+
+---
 
 ## 値オブジェクトで書かれたロジック
 
@@ -458,6 +491,8 @@ delivery.EnsureWithin120Minutes();
     - この考え方は、Reactにおいて計算によってStateをできるだけ減らそうという教えと同じ
     - 姓・名がある場合にはフルネームは不要…みたいな
 
+---
+
 # EFCoreで表現する値オブジェクト
 
 ## 翻って、EFCoreとは何だったか
@@ -475,14 +510,17 @@ delivery.EnsureWithin120Minutes();
             
     - 値オブジェクトによって、値にまつわるルールがカプセル化され、利用するロジックは宣言的になる
 
-## Complex TypeとFluent APIで値オブジェクトをDBカラムに適用する
+---
 
-- Complex TypesやOwnd Manyを利用して、値オブジェクトを表現する
-- DbContextを用いて集約も表現できるが、時間が足りないのでここでは割愛
+## Complex TypesとFluent APIで値オブジェクトをDBカラムに紐づける
+
+- POCOの値オブジェクトをどうやってDBに紐づけるのか？ マッパーの独自実装が必要？→その必要は無い
+- Complex Typesを利用して、値オブジェクトをマッピングする
 - 値オブジェクトはPOCOである必要があり、フレームワークに依存させてはいけない
     - コンクリートの配送エンティティをPOCOで表現した例
     - おまじないはあるが、EFのフレームワークには依存していない
 
+### Step1 POCOで値オブジェクトを書く
 ```csharp
 public sealed class TransportTime
 {
@@ -505,16 +543,17 @@ public sealed class TransportTime
 }
 ```
 
-- POCOで実装した値オブジェクトを、Complex TypeとしてFluent APIでDBに結び付ける
-    - コンクリートの配送(ConcreteDelivery)というエンティティの中に、
+### Step2 Complex TypeとしてFluent APIでDBに結び付ける
+- コンクリートの配送(ConcreteDelivery)というエンティティの中に、
     配送時間(TranceportTime)がある場合の例
-
 ```csharp
 // DbContext
 modelBuilder.Entity<ConcreteDelivery>()
     .ComplexProperty(x => x.TransportTime, ct =>
         ct.Property(p => p.Minutes).HasColumnName("TransportMinutes"));
 ```
+
+---
 
 - 注意点：ListのComplex Typesはサポートされていない
 
@@ -575,100 +614,108 @@ public class TransportCheckpoint // Entity (履歴の1件)
 
 ```
 
-### Owned Manyを利用して、中間テーブルを値オブジェクトとみなす
+---
+
+### OwnsManyを利用して、中間テーブルを値オブジェクトとみなす
 
 - どうしても値オブジェクトのリストを持つべきだと思われるとき
     - Listの中身が重複せず、値が同じなら同じものであるとみなせるもの
     - 中間テーブルを介してマスタを参照するようなテーブル構造のもの
 - 例えば：記事に対するタグ、エンジニアに対する資格一覧、工事に対する所属者IDなど
     - 「エンジニア」が持つ「資格」の例
-    
-    ```csharp
-    public readonly record struct QualificationId(string Value);
-    
-    public sealed class Engineer
+    - IDという値を持つ値オブジェクトだと考えられる
+
+---
+
+```csharp
+public readonly record struct QualificationId(string Value);
+
+public sealed class Engineer
+{
+    public Guid Id { get; private set; }
+
+    private readonly List<EngineerQualification> _qualifications = new();
+    public IReadOnlyCollection<EngineerQualification> Qualifications => _qualifications;
+
+    private Engineer() { } // EF
+
+    public Engineer(Guid id) => Id = id;
+
+    public void AddQualification(QualificationId qualificationId)
     {
-        public Guid Id { get; private set; }
+        if (_qualifications.Any(x => x.QualificationId == qualificationId)) return;
+        _qualifications.Add(new EngineerQualification(qualificationId));
+    }
+
+    public void RemoveQualification(QualificationId qualificationId)
+        => _qualifications.RemoveAll(x => x.QualificationId == qualificationId);
+}
+```
+``` csharp
+// “エンジニアと資格の紐づき”だけを表す値オブジェクト（追加情報なしの中間テーブル）
+public sealed class EngineerQualification
+{
+    public QualificationId QualificationId { get; private set; }
+
+    private EngineerQualification() { } // EF
+    public EngineerQualification(QualificationId qualificationId) => QualificationId = qualificationId;
+}
+
+// 資格情報マスタ
+public sealed class QualificationMaster
+{
+    public string Id { get; private set; } = default!; // 例: "基本情報", "応用情報"
+    public string Name { get; private set; } = default!;
+}
+
+```
     
-        private readonly List<EngineerQualification> _qualifications = new();
-        public IReadOnlyCollection<EngineerQualification> Qualifications => _qualifications;
-    
-        private Engineer() { } // EF
-    
-        public Engineer(Guid id) => Id = id;
-    
-        public void AddQualification(QualificationId qualificationId)
+- DbContextの定義
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Engineer>(b =>
+    {
+        b.HasKey(x => x.Id);
+
+        b.OwnsMany(x => x.Qualifications, q =>
         {
-            if (_qualifications.Any(x => x.QualificationId == qualificationId)) return;
-            _qualifications.Add(new EngineerQualification(qualificationId));
-        }
-    
-        public void RemoveQualification(QualificationId qualificationId)
-            => _qualifications.RemoveAll(x => x.QualificationId == qualificationId);
-    }
-    
-    // “エンジニアと資格の紐づき”だけを表す値オブジェクト（追加情報なしの中間テーブル）
-    public sealed class EngineerQualification
-    {
-        public QualificationId QualificationId { get; private set; }
-    
-        private EngineerQualification() { } // EF
-        public EngineerQualification(QualificationId qualificationId) => QualificationId = qualificationId;
-    }
-    
-    // 資格情報マスタ
-    public sealed class QualificationMaster
-    {
-        public string Id { get; private set; } = default!; // 例: "基本情報", "応用情報"
-        public string Name { get; private set; } = default!;
-    }
-    
-    ```
-    
-    - DbContextの定義
-    
-    ```csharp
-    using Microsoft.EntityFrameworkCore;
-    
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Engineer>(b =>
-        {
-            b.HasKey(x => x.Id);
-    
-            b.OwnsMany(x => x.Qualifications, q =>
+            q.ToTable("EngineerQualifications");      // ← 中間テーブル
+            q.WithOwner().HasForeignKey("EngineerId");
+
+            // 値オブジェクトの中身を1列にマップ
+            q.OwnsOne(x => x.QualificationId, id =>
             {
-                q.ToTable("EngineerQualifications");      // ← 中間テーブル
-                q.WithOwner().HasForeignKey("EngineerId");
-    
-                // 値オブジェクトの中身を1列にマップ
-                q.OwnsOne(x => x.QualificationId, id =>
-                {
-                    id.Property(p => p.Value)
-                      .HasColumnName("QualificationId")
-                      .IsRequired();
-                });
-    
-                // 中間テーブルなので複合キーにする（永続化上のキーであって、ドメインIDではない）
-                q.HasKey("EngineerId", "QualificationId");
-    
-                // 同一エンジニア内での重複防止にもなる
+                id.Property(p => p.Value)
+                    .HasColumnName("QualificationId")
+                    .IsRequired();
             });
+
+            // 中間テーブルなので複合キーにする（永続化上のキーであって、ドメインIDではない）
+            q.HasKey("EngineerId", "QualificationId");
+
+            // 同一エンジニア内での重複防止にもなる
         });
-    
-        modelBuilder.Entity<QualificationMaster>(b =>
-        {
-            b.ToTable("QualificationMasters");
-            b.HasKey(x => x.Id);
-        });
-    }
-    
-    ```
+    });
+
+    modelBuilder.Entity<QualificationMaster>(b =>
+    {
+        b.ToTable("QualificationMasters");
+        b.HasKey(x => x.Id);
+    });
+}
+
+```
     
 - DB上はエンティティであるものをOwned Manyを用いて値オブジェクトとして定義可能
     - この値オブジェクトに振る舞いを持たせることはあまりないかもしれないが…
         - 他のプロパティが値オブジェクトになっているときに一貫性が出る
         - 集約的にうれしい（集約ルートからしか制御させない、トランザクションの境界）
+
+---
 
 ## 値オブジェクトを利用するときの注意点
 
@@ -729,32 +776,41 @@ public class TransportCheckpoint // Entity (履歴の1件)
     }
     
     ```
-    
-    - 注意：形容詞をつけて区別すると、同じ言葉ではなくなる
-        - 業務エキスパートは、いちいち「請求の」「コミュニティの」アドレスと言うか？
-    
-    ### Warning：形容詞で区別してしまう
-    
-    ```csharp
-    public sealed record BillingEmail(string Value)
-    {
-        public static BillingEmail Create(string value)
-            => value.EndsWith("@company.com")
-               ? new(value)
-               : throw new Exception("請求先は社用メール必須");
-    }
-    
-    public sealed record CommunityEmail(string Value)
-    {
-        public static CommunityEmail Create(string value)
-            => !value.EndsWith("@company.com")
-               ? new(value)
-               : throw new Exception("コミュニティは社用メール禁止");
-    }
-    
-    ```
-    
-- 値オブジェクトは、DDDに限らずオブジェクト指向言語であれば汎用的に利用可能な実装パターンである
+
+--- 
+
+- 注意：形容詞をつけて区別すると、同じ言葉ではなくなる
+    - 業務エキスパートは、いちいち「請求の」「コミュニティの」アドレスと言うか？
+
+### Warning：形容詞で区別してしまう
+
+```csharp
+public sealed record BillingEmail(string Value)
+{
+    public static BillingEmail Create(string value)
+        => value.EndsWith("@company.com")
+            ? new(value)
+            : throw new Exception("請求先は社用メール必須");
+}
+
+public sealed record CommunityEmail(string Value)
+{
+    public static CommunityEmail Create(string value)
+        => !value.EndsWith("@company.com")
+            ? new(value)
+            : throw new Exception("コミュニティは社用メール禁止");
+}
+
+```
+
+---
+
+- 値オブジェクトは、ドメイン駆動設計やEFCoreに限らず
+オブジェクト指向言語であれば汎用的に利用可能な実装パターンである
+- プリミティブ値に固執せず、型の情報と振る舞いの定義を与え、物体（オブジェクト）として型にする
+- 業務上の言葉を**モデル化**する行為ともいえる
+
+---
 
 # ドメインモデル
 
@@ -771,6 +827,8 @@ Q：引っ越しの時に、冷蔵庫が家のドアを通れるか確認した�
     - この段ボールがモデルである
     - このモデルに、例えば重さも表現したいからといって重りを乗せ始めたら、モデルとして役に立たなくなる
 - 役に立つモデルを探索するために、業務エキスパートと、ユビキタス言語で会話し、区切られた文脈を発見しよう
+
+---
 
 ## ドメインモデルをいつやるか
 
@@ -789,7 +847,10 @@ Q：引っ越しの時に、冷蔵庫が家のドアを通れるか確認した�
 （FE→BE転向や採用による新規アサイン、育休産休・介護休）
     - あなたの頭の中にある業務知識は、いつかは引き継がなければならない
     - あなたはいつか、見ず知らずのコードに飛び込む必要がある
-    - →だから業務のモデル化やコードの自己文書化が必要
+- →だから業務のモデル化やコードの自己文書化が必要
+
+---
+
 - つまり、いつかは複雑さに**真正面から**取り組むべき時が来る
     - 業務ロジックが凝集され、カオスにならないコードベース
         - 美しいまな板のようなもの
@@ -798,6 +859,8 @@ Q：引っ越しの時に、冷蔵庫が家のドアを通れるか確認した�
     - これらが整うことで、いつでも新しく魅力的な機能（料理）を産み出すことができる
 - ただEFCoreを使うだけだと、汚れたまな板とさびた包丁で料理するようなことになっていく
     - どんなに料理人（エンジニア）の腕が良くても、スピード（生産性）が落ち、出来上がる料理（機能）の品質は低下する
+
+---
 
 # まとめ
 
